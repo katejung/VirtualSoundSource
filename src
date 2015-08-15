@@ -1,0 +1,390 @@
+
+warning('off','all')
+elevation = load('elevation0.mat');
+names = fieldnames(elevation);
+A = zeros(512,72);
+for i = 1:length(names)/2
+    row = getfield(elevation,names{i});   
+    A(:,i) = row';
+end
+
+% HRIR of both Right and Left Ear
+figure (1)
+azimuthangle = 0:5:355;
+time = 0:0.000022675:0.0116;
+mesh(azimuthangle, time, A)
+xlabel('Azimuth Angle (degree)')
+ylabel('Time (s)')
+zlabel('Impulse Response')
+title('Figure 1. Impulse Response of Left Ear and Right Ear')
+
+B = zeros(512,72);
+for j = 1:length(names)/2
+    row = getfield(elevation, names{length(names)/2+j});
+    B(:,j) = row';
+end
+hold on
+mesh(azimuthangle, time, B)
+
+%HRIR of left ear vs. azimuth
+figure (2)
+mesh(azimuthangle,time,A)
+xlabel('Azimuthangle (Degree)')
+ylabel('Impulse Response Magnitude')
+title('Figure 2. Impulse Reponse at the Left Ear vs. azimuth angle')
+view(0,180)
+
+HRTF_Left_Mag = zeros(512,72);
+HRTF_Left_Phase = zeros(512,72);
+HRTF_Right_Mag = zeros(512,72);
+HRTF_Right_Phase = zeros(512,72);
+
+for i = 1:length(names)/2
+    row = getfield(elevation,names{i});  
+    row = fft(row);  
+    HRTF_Left_Mag(:,i) = abs(row)'; %Magnitude of HRTF Left Ear
+    HRTF_Left_Phase(:,i) = unwrap(angle(row))'; % Phase Left
+    HRTF_Right_Mag(:,i) = abs(fft(getfield(elevation, names{72+i}))); % Magnitude of HRTF Right Ear
+    HRTF_Right_Phase(:,i) = unwrap(angle(fft(getfield(elevation, names{72+i})))); % Phase Right Ear
+end
+
+% HRTF Mag plot Right & Left
+figure (3)
+frequency = 1:1:512;
+surf(azimuthangle, frequency, HRTF_Left_Mag);
+hold on
+surf(azimuthangle, frequency, HRTF_Right_Mag);
+xlabel('Angle (degrees)')
+ylabel('frequency (Hz)')
+zlabel('Magnitude of HRTF(dB)')
+title('Figure 3. Magnitude plot of HRTF')
+
+% Mag and Plot of HRTF Left vs frequency & Azimuth
+figure (4)
+subplot(2,1,1)
+surf(azimuthangle,frequency,HRTF_Left_Mag);
+view(90,0)
+ylabel('Frequency (Hz)')
+zlabel('Magnitude (dB)')
+title('Figure 4 Top. Magnitude vs. Frequency of Left Ear')
+subplot(2,1,2)
+surf(azimuthangle, frequency, HRTF_Left_Mag);
+view(180,0);
+xlabel('Azimuth Angle (degrees)')
+zlabel('Magnitude(dB)')
+title('Figure 4 Bottom. Magnitude vs Azimuth Angle of Left Ear')
+
+whos angle
+clear angle
+
+figure (5)
+mesh(azimuthangle, frequency, HRTF_Left_Phase)
+hold on
+mesh(azimuthangle, frequency, HRTF_Right_Phase)
+xlabel('Angle (degrees)')
+ylabel('frequency (Hz)')
+zlabel('Phase of HRTF of Left Ear (rad)')
+title('Figure 5. Phase plot of HRTF at the Left Ear')
+
+figure (6)
+subplot(2,1,1)
+mesh(azimuthangle, frequency, HRTF_Left_Phase)
+view(90,0)
+ylabel('Frequency (Hz)')
+zlabel('Phase (rad)')
+title('Figure 6 Top. Phase vs. Frequency of Left Ear')
+subplot(2,1,2)
+mesh(azimuthangle, frequency, HRTF_Left_Phase)
+view(180,0)
+xlabel('Azimuth Angle (degrees)')
+zlabel('Phase (rad)')
+title('Figure 6 Bottom. Phase vs. Azimtuh Angle of Left Ear')
+
+% ahead (phase delay is close to zero). 
+
+fs = 44100; % sampling freuqency
+whitenoise = wgn(fs*2,1,0); % duration of 2 sec white noise
+
+Ssl_whitenoise0 = conv(A(:,1)',whitenoise);
+Ssl_whitenoise45 = conv(A(:,9)', whitenoise);
+Ssl_whitenoise90 = conv(A(:,18)', whitenoise);
+Ssl_whitenoise270 = conv(A(:,54)', whitenoise);
+Ssl_whitenoise315 = conv(A(:,63)', whitenoise);
+
+time = 0:0.00002254511841823:2;
+time = time(1:end-1);
+figure (7)
+subplot(3,2,1)
+plot(time,Ssl_whitenoise270,'g')
+xlabel('Time (s)')
+ylabel('Response')
+title('Figure 7. Left Ear:(@ Left Ear)')
+subplot(3,2,2)
+plot(time,Ssl_whitenoise315, 'c')
+xlabel('Time (s)')
+ylabel('Response')
+title('Figure 7. Left Ear:(@ Between Left Ear and Straight)')
+subplot(3,2,3)
+plot(time,Ssl_whitenoise0, 'y')
+xlabel('Time (s)')
+ylabel('Response')
+title('Figure 7. Left Ear:(@ Straight Ahead)')
+subplot(3,2,4)
+plot(time,Ssl_whitenoise45,'m')
+xlabel('Time (s)')
+ylabel('Response')
+title('Figure 7. Left Ear:(@Between Straight and Right Ear)')
+subplot(3,2,5)
+plot(time,Ssl_whitenoise90,'r')
+xlabel('Time (s)')
+ylabel('Response')
+title('Figure 7. Left Ear:(@ Right Ear)')
+
+Ssr_whitenoise0 = conv(B(:,1)',whitenoise);
+Ssr_whitenoise45 = conv(B(:,9)', whitenoise);
+Ssr_whitenoise90 = conv(B(:,18)', whitenoise);
+Ssr_whitenoise270 = conv(B(:,54)', whitenoise);
+Ssr_whitenoise315 = conv(B(:,63)', whitenoise);
+
+figure (8)
+subplot(3,2,1)
+plot(time, Ssr_whitenoise90,'g')
+xlabel('Samples (s)')
+ylabel('Response')
+title('Figure 8. Right Ear:(@ Right Ear)')
+subplot(3,2,2)
+plot(time, Ssr_whitenoise45, 'c')
+xlabel('Samples (s)')
+ylabel('Response')
+title('Figure 8. Right Ear:(@ Between Right Ear and Straight)')
+subplot(3,2,3)
+plot(time, Ssr_whitenoise0, 'y')
+xlabel('Samples (s)')
+ylabel('Response')
+title('Figure 8. Right Ear: (@ Straight Ahead)')
+subplot(3,2,4)
+plot(time, Ssr_whitenoise315,'m')
+xlabel('Samples (s)')
+ylabel('Response')
+title('Figure 8. Right Ear: (@Between Straight and Left Ear)')
+subplot(3,2,5)
+plot(time, Ssr_whitenoise270,'r')
+xlabel('Samples (s)')
+ylabel('Response')
+title('Figure 8. Right Ear: (@Left Ear)')
+
+%% 2.3
+whitenoiseFD= abs(fft(whitenoise(1:512)));
+figure (9)
+subplot(3,2,1)
+plot(whitenoiseFD.*HRTF_Left_Mag(:,54))
+xlim([0,256])
+xlabel('Frequency (Hz)')
+ylabel('Response Amplitude (dB)')
+title('Figure 9. Left Ear:(@ Left Ear)')
+subplot(3,2,2)
+plot(whitenoiseFD.*HRTF_Left_Mag(:,63))
+xlim([0,256])
+xlabel('Frequency (Hz)')
+ylabel('Response Amplitude (dB)')
+title('Figure 9. Left Ear:(@ Between Left Ear and Straight)')
+subplot(3,2,3)
+plot(whitenoiseFD.*HRTF_Left_Mag(:,1))
+xlim([0,256])
+xlabel('Frequency (Hz)')
+ylabel('Response Amplitude (dB)')
+title('Figure 9. Left Ear: (@ Straight Ahead)')
+subplot(3,2,4)
+plot(whitenoiseFD.*HRTF_Left_Mag(:,9))
+xlim([0,256])
+xlabel('Frequency (Hz)')
+ylabel('Response Amplitude (dB)')
+title('Figure 9. Left Ear: (@Between Straight and Right Ear)')
+subplot(3,2,5)
+plot(whitenoiseFD.*HRTF_Left_Mag(:,18))
+xlim([0,256])
+xlabel('Frequency (Hz)')
+ylabel('Response Amplitude (dB)')
+title('Figure 9. Left Ear: (@ Right Ear)')
+
+
+
+figure (10)
+subplot(3,2,1)
+plot(whitenoiseFD.*HRTF_Right_Mag(:,18))
+xlim([0,256])
+xlabel('Frequency (Hz)')
+ylabel('Response Amplitude (dB)')
+title('Figure 10. Right Ear: (@ Right Ear)')
+subplot(3,2,2)
+plot(whitenoiseFD.*HRTF_Right_Mag(:,9))
+xlim([0,256])
+xlabel('Frequency (Hz)')
+ylabel('Response Amplitude (dB)')
+title('Figure 10. Right Ear: (@ Between Right Ear and Straight)')
+subplot(3,2,3)
+plot(whitenoiseFD.*HRTF_Right_Mag(:,1))
+xlim([0,256])
+xlabel('Frequency (Hz)')
+ylabel('Response Amplitude (dB)')
+title('Figure 10. Right Ear: (@ Straight Ahead)')
+subplot(3,2,4)
+plot(whitenoiseFD.*HRTF_Right_Mag(:,63))
+xlim([0,256])
+xlabel('Frequency (Hz)')
+ylabel('Response Amplitude (dB)')
+title('Figure 10. Right Ear:(@Between Straight and Left Ear)')
+subplot(3,2,5)
+plot(whitenoiseFD.*HRTF_Right_Mag(:,54))
+xlim([0,256])
+xlabel('Frequency (Hz)')
+ylabel('Response Amplitude (dB)')
+title('Figure 10. Right Ear:(@Left Ear)')
+%% 
+% The frequency domain of the plot in Figure 5 and 6 show that the higher
+% frequency sound signals are attenuated. However, the peak amplitudes of
+% the filtered signals demonstrate similar behavior that is seen in figure
+% 4 and 5; the amplitude is highest when the signal is straight ahead, but
+% minimal when the signal is paced at the opposite ear. 
+
+%% 2.4
+St_whitenoise0 = [Ssl_whitenoise0 Ssr_whitenoise0]; % straight ahead stereo
+St_whitenoise90 = [Ssl_whitenoise90 Ssr_whitenoise90]; %right stereo
+St_whitenoise270 = [Ssl_whitenoise270 Ssr_whitenoise270]; %Left stereo
+St_whitenoise45 = [Ssl_whitenoise45 Ssr_whitenoise45]; % Front Right stereo
+St_whitenoise315 = [Ssl_whitenoise315 Ssr_whitenoise315]; %right stereo
+
+wavwrite(St_whitenoise0,44100,'St_whitenoise0')
+wavwrite(St_whitenoise90,44100,'St_whitenoise90')
+wavwrite(St_whitenoise270,44100,'St_whitenoise270')
+wavwrite(St_whitenoise45,44100,'St_whitenoise45')
+wavwrite(St_whitenoise315,44100,'st_whitenoise315')
+
+%%
+%sdfsdfasdfsdlf jasldfh lasjd f
+%% 2.5
+glass = wavread('glass');
+St_glass0 = [conv(A(:,1), glass) conv(B(:,1),glass)]; % glass from Front
+St_glass90 = [conv(A(:,18), glass) conv(B(:,18),glass)]; % glass from Right
+St_glass270 = [conv(A(:,54), glass) conv(B(:,54),glass)]; % glass from Left
+St_glass180 = [conv(A(:,36), glass) conv(B(:,36),glass)]; % glass from Back
+
+% soundsc(St_glass90,fs)
+
+gun = wavread('gun');
+St_gun0 = [conv(A(:,1), gun) conv(B(:,1),gun)]; % gun from Front
+St_gun90 = [conv(A(:,18), gun) conv(B(:,18),gun)]; % gun from Right
+St_gun270 = [conv(A(:,54), gun) conv(B(:,54),gun)]; % gun from Left
+St_gun180 = [conv(A(:,36), gun) conv(B(:,36),gun)]; % gun from Back
+
+%soundsc(St_gun90,fs)
+
+heli = wavread('heli');
+St_heli0 = [conv(A(:,1), heli) conv(B(:,1),heli)]; % gun from Front
+St_heli90 = [conv(A(:,18), heli) conv(B(:,18),heli)]; % gun from Right
+St_heli270 = [conv(A(:,54), heli) conv(B(:,54),heli)]; % gun from Left
+St_heli180 = [conv(A(:,36), heli) conv(B(:,36),heli)]; % gun from Back
+
+% soundsc(St_heli0, fs)
+%% Problem 3
+%% 3.1
+%% 3.2
+
+a = 0;
+b = 180;
+x = a+(b-a)*rand(1,512);
+m = (a+b)/2;
+s=30;
+theta = myGaussian(x,m,s);
+theta = sort(theta).*13684+2; % Gaussian Trajectory Signal from left to right
+
+% Gaussian Trajectory Signal Plot
+figure (11)
+plot(theta,'.')
+xlabel('sample')
+ylabel('Angle with respect to Right Ear (degrees)')
+title('Figure 11. Trajectory Signal {\theta}[n]')
+
+
+modifiedA = [A(:,56:end) A(:,1:55)]; % 0 Azimuth equivalent to Left ear
+modifiedB = [B(:,56:end) B(:,1:55)]; % 0 Azimuth equivalent to Left ear
+time2 = 0:1:511;
+% hl = zeros(1,511); % h[n, theta]
+% hr = zeros(1,511);
+% for i = 1:511
+%     hl(i) = griddata(azimuthangle, time2, modifiedA, theta(i),i);
+%     hr(i) = griddata(azimuthangle,time2 ,modifiedB, theta(i),i);
+% end
+
+figure (12)
+plot(hl)
+hold on
+plot(hr,'g')
+xlabel('Sample')
+ylabel('Impulse Response')
+legend('h_{left}','h_{right}')
+title('Figure 12 Impulse Response of hl and hr')
+Ssl_whitenoise_LtoR = conv(hl, whitenoise);
+Ssr_whitenoise_LtoR = conv(hr, whitenoise);
+St_whitenoise_LtoR = [Ssl_whitenoise_LtoR Ssr_whitenoise_LtoR];
+soundsc(Ssr_whitenoise_LtoR,fs)
+wavwrite(St_whitenoise_LtoR,fs,'St_whitenoise_LtoR')
+
+figure (13)
+plot(St_whitenoise_LtoR)
+hold on
+plot(Ssr_whitenoise_LtoR,'m')
+hold on
+plot(Ssl_whitenoise_LtoR,'g')
+
+xlabel('sample')
+ylabel('Amplitude')
+legend('St_{whitenoise}','Ssr_{whitenoise}','Ssl_{whitenoise}')
+title('Figure 13. Whitenoise Moving signal')
+
+
+figure (14)
+mesh(azimuthangle, time2, modifiedA)
+hold on
+mesh(azimuthangle,time2, modifiedB)
+xlabel('Azimuth')
+ylabel('sample')
+zlabel('HRIR')
+title('Figure 14. Modified Gradient of HRIR')
+
+%% 3.3
+% It is hard to localize the white noise because the 
+% signal is randome and the sum of white noise will be white noise also. 
+%% 3.4
+% Similar process would be done in frequency domain. HRTF, instead of HRIR
+% will be used. After interpolating H[f] (transfer function) using
+% griddata method, it would be multipled by the fft transform of the input
+% sound. In order to listen to the filtered signal in time domain, one
+% could use ifft() method to compute inverse fast fourier transform. 
+%% 3.5 
+Ssl_heli_LtoR = conv(hl, heli);
+Ssr_heli_LtoR = conv(hr, heli);
+St_heli_LtoR = [Ssl_heli_LtoR Ssr_heli_LtoR];
+soundsc(St_heli_LtoR,fs)
+figure (15)
+plot(heli,'m')
+hold on
+plot(St_heli_LtoR,'k')
+title('Figure 15. Heli Left to Right')
+
+theta = myGaussian(x,m,s);
+theta3 = sort(theta).*13684+92; 
+figure (16)
+plot(theta3)
+% hl2 = zeros(1,511); % h[n, theta]
+% hr2 = zeros(1,511);
+% for i = 1:511
+%     hl2(i) = griddata(azimuthangle, time2, modifiedA, theta3(i),i);
+%     hr2(i) = griddata(azimuthangle,time2 ,modifiedB, theta3(i),i);
+% end
+
+Ssl_heli_FtoB = conv(hl2, heli);
+Ssr_heli_FtoB = conv(hr2, heli);
+St_heli_FtoB = [Ssl_heli_FtoB Ssr_heli_FtoB];
+% soundsc(St_heli_FtoB,fs)
+wavwrite(St_heli_FtoB, fs,'St_heli_FtoB')
